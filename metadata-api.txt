@@ -1,0 +1,32 @@
+@startuml
+package "com.example.mapper" {
+  interface ScreenColumnMapper {
+    + List<ScreenColumnResult> findFilterValuesByScreen(String screenName)
+  }
+
+  class ScreenColumnResult {
+    + id : Long
+    + columnName : String
+    + filterValuesJson : String
+  }
+}
+
+package "com.example.service" {
+  class ScreenFilterService {
+    - mapper : ScreenColumnMapper
+    - objectMapper : ObjectMapper
+    + getFiltersByScreen(screenName : String) : Map<String, List<String>>
+  }
+}
+
+package "com.example.controller" {
+  class ScreenFilterController {
+    - service : ScreenFilterService
+    + getFilters(screenName : String) : ResponseEntity<Map<String, List<String>>>
+  }
+}
+
+ScreenFilterController --> ScreenFilterService : uses
+ScreenFilterService --> ScreenColumnMapper : queries
+ScreenColumnMapper --> ScreenColumnResult : returns
+@enduml

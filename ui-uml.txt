@@ -1,0 +1,53 @@
+@startuml
+skinparam handwritten true
+skinparam shadowing false
+
+package "Angular Application" {
+    package "Services" {
+        class ProductService {
+            - baseUrl: string
+            + getGridData(request: GridRequest): Observable<GridResponse>
+            + getFilterValues(columnName: string): Observable<FilterDropdownResponse>
+            + getFilterConfigs(screenName: string): Observable<ColumnFilterConfig[]>
+        }
+    }
+
+    package "Components" {
+        class ProductGridComponent {
+            - gridOptions: any
+            - columnDefs: ColDef[]
+            - defaultColDef: ColDef
+            - gridApi: GridApi
+            - columnFilterConfigs: ColumnFilterConfig[]
+            - lastRowData: { [key: string]: any } <<NEW>>
+            - currentFilterModel: { [key: string]: FilterCondition } <<NEW>>
+            - currentSortModel: any[] <<NEW>>
+            + ngOnInit(): void
+            + onGridReady(params: GridReadyEvent): void
+            - defineColumnDefs(): ColDef[]
+            - getServerSideStoreParams(): ServerSideStoreParams
+            - createServerSideDatasource(): IServerSideDatasource
+        }
+    }
+
+    package "Models (Interfaces)" {
+        interface GridRequest
+        interface SortModel
+        interface FilterCondition
+        interface GridResponse
+        interface FilterDropdownResponse
+        interface ColumnFilterConfig
+    }
+
+    ProductGridComponent --> ProductService : uses
+    ProductGridComponent ..> GridRequest : sends
+    ProductGridComponent ..> GridResponse : receives
+    ProductGridComponent ..> FilterDropdownResponse : receives
+    ProductGridComponent ..> ColumnFilterConfig : receives
+
+    ProductService ..> GridRequest : receives
+    ProductService ..> GridResponse : sends
+    ProductService ..> FilterDropdownResponse : sends
+    ProductService ..> ColumnFilterConfig : sends
+}
+@enduml

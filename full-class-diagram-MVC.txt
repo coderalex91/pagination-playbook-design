@@ -1,0 +1,86 @@
+@startuml
+skinparam handwritten true
+skinparam shadowing false
+
+package "Spring Boot Application" {
+    package "DTOs" {
+        class GridRequestDTO {
+            - startRow: int
+            - endRow: int
+            - sortModel: List<SortModelDTO>
+            - filterModel: Map<String, FilterConditionDTO>
+            - lastRowData: Map<String, Object> <<NEW>>
+        }
+        class SortModelDTO {
+            - colId: String
+            - sort: String
+        }
+        class FilterConditionDTO {
+            - filterType: String
+            - type: String
+            - filter: String
+            - filterTo: String
+            - dateFrom: String
+            - dateTo: String
+            - values: List<String>
+        }
+        class GridResponseDTO {
+            - rowData: List<Map<String, Object>>
+            - totalRowCount: long
+        }
+        class FilterDropdownResponseDTO {
+            - values: List<String>
+        }
+        class ColumnFilterConfigDTO {
+            - columnName: String
+            - filterValuesJson: String
+            - additionalDetails: String
+        }
+
+        GridRequestDTO "1" *-- "0..*" SortModelDTO : contains
+        GridRequestDTO "1" *-- "0..*" FilterConditionDTO : contains
+        GridResponseDTO "1" *-- "0..*" Map : contains
+        FilterDropdownResponseDTO "1" *-- "0..*" String : contains
+    }
+
+    package "DAO" {
+        interface ProductDao <<MyBatis Mapper>> {
+            + getPaginatedProducts(pageSize, sortModelJson, filterModelJson, lastRowDataJson, params): List<Map<String, Object>>
+            + getDistinctValues(columnName): List<String>
+            + getScreenColumnFilters(screenName): List<ColumnFilterConfigDTO>
+        }
+    }
+
+    package "Service" {
+        class ProductService {
+            - productDao: ProductDao
+            - objectMapper: ObjectMapper
+            + getProductsGridData(request: GridRequestDTO): GridResponseDTO
+            + getProductDistinctValues(columnName: String): List<String>
+            + getScreenColumnFilters(screenName: String): List<ColumnFilterConfigDTO>
+        }
+    }
+
+    package "Controller" {
+        class ProductController <<RestController>> {
+            - productService: ProductService
+            + getGridData(@RequestBody request: GridRequestDTO): ResponseEntity<GridResponseDTO>
+            + getFilterValues(@PathVariable columnName: String): ResponseEntity<FilterDropdownResponseDTO>
+            + getFilterConfigs(@PathVariable screenName: String): ResponseEntity<List<ColumnFilterConfigDTO>>
+        }
+    }
+
+    ProductController --> ProductService : uses
+    ProductService --> ProductDao : uses
+
+    ProductController ..> GridRequestDTO : receives
+    ProductController ..> GridResponseDTO : sends
+    ProductController ..> FilterDropdownResponseDTO : sends
+    ProductController ..> ColumnFilterConfigDTO : sends
+
+    ProductService ..> GridRequestDTO : receives
+    ProductService ..> GridResponseDTO : sends
+    ProductService ..> FilterDropdownResponseDTO : sends
+    ProductService ..> ColumnFilterConfigDTO : sends
+}
+@enduml

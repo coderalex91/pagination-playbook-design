@@ -1,0 +1,59 @@
+@startuml
+skinparam handwritten true
+skinparam shadowing false
+
+actor User
+participant "Angular UI (AG Grid)" as Angular
+participant "ProductService (Angular)" as AngularService
+participant "ProductController (Spring Boot)" as Controller
+participant "ProductService (Spring Boot)" as SpringService
+participant "ProductDao (MyBatis Annotations)" as DAO
+participant "Oracle DB (PKG_PRODUCTS)" as OracleSP
+
+== Initial Grid Load / Filter/Sort Change ==
+User -> Angular : Interacts with Grid (first page, new filter/sort)
+Angular -> Angular : AG Grid detects change, calls IServerSideDatasource.getRows()
+Angular -> Angular : ProductGridComponent resets lastRowData (if filter/sort changed or first page)
+Angular -> AngularService : Calls getGridData(gridRequest: {..., lastRowData: undefined})
+AngularService -> Controller : HTTP POST /api/products/grid-data (GridRequestDTO)
+Controller -> SpringService : Calls getProductsGridData(gridRequestDTO)
+SpringService -> SpringService : Converts models to JSON, lastRowDataJson is NULL
+SpringService -> DAO : Calls getPaginatedProducts(pageSize, sortJson, filterJson, NULL, outParams)
+DAO -> OracleSP : Calls PKG_PRODUCTS.GET_PAGINATED_PRODUCTS(IN, IN, IN, IN NULL, OUT SYS_REFCURSOR, OUT totalCount)
+OracleSP -> OracleSP : build_where_clause(filterJson)
+OracleSP -> OracleSP : build_order_by_clause(sortJson)
+OracleSP -> OracleSP : Executes COUNT(*) query for totalCount
+OracleSP -> OracleSP : build_keyset_condition(..., NULL) returns empty string (no keyset condition)
+OracleSP -> OracleSP : Executes main SELECT query with WHERE, ORDER BY, FETCH NEXT
+OracleSP --> DAO : Returns SYS_REFCURSOR and totalCount
+DAO --> SpringService : Maps SYS_REFCURSOR to List<Map<String, Object>>, totalCount extracted
+SpringService -> SpringService : Constructs GridResponseDTO
+SpringService --> Controller : Returns GridResponseDTO
+Controller --> AngularService : HTTP 200 OK (GridResponseDTO)
+AngularService --> Angular : Returns GridResponse
+Angular -> Angular : ProductGridComponent stores last row of received data in lastRowData
+Angular -> User : Displays first block of data
+
+== Subsequent Page Load (Next Page) ==
+User -> Angular : Scrolls/Paginates to next page
+Angular -> Angular : AG Grid calls IServerSideDatasource.getRows()
+Angular -> AngularService : Calls getGridData(gridRequest: {..., lastRowData: {last_row_data_object}})
+AngularService -> Controller : HTTP POST /api/products/grid-data (GridRequestDTO)
+Controller -> SpringService : Calls getProductsGridData(gridRequestDTO)
+SpringService -> SpringService : Converts models to JSON, lastRowDataJson is populated
+SpringService -> DAO : Calls getPaginatedProducts(pageSize, sortJson, filterJson, lastRowDataJson, outParams)
+DAO -> OracleSP : Calls PKG_PRODUCTS.GET_PAGINATED_PRODUCTS(IN, IN, IN, IN lastRowDataJson, OUT SYS_REFCURSOR, OUT totalCount)
+OracleSP -> OracleSP : build_where_clause(filterJson)
+OracleSP -> OracleSP : build_order_by_clause(sortJson)
+OracleSP -> OracleSP : Executes COUNT(*) query for totalCount (can be optimized if total count is stable)
+OracleSP -> OracleSP : build_keyset_condition(sortJson, lastRowDataJson) returns keyset WHERE clause
+OracleSP -> OracleSP : Executes main SELECT query with WHERE, ORDER BY, keyset condition, FETCH NEXT
+OracleSP --> DAO : Returns SYS_REFCURSOR and totalCount
+DAO --> SpringService : Maps SYS_REFCURSOR to List<Map<String, Object>>, totalCount extracted
+SpringService -> SpringService : Constructs GridResponseDTO
+SpringService --> Controller : Returns GridResponseDTO
+Controller --> AngularService : HTTP 200 OK (GridResponseDTO)
+AngularService --> Angular : Returns GridResponse
+Angular -> Angular : ProductGridComponent stores last row of received data in lastRowData
+Angular -> User : Displays next block of data
+@enduml

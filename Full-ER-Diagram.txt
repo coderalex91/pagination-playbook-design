@@ -1,0 +1,91 @@
+@startuml
+skinparam handwritten true
+skinparam shadowing false
+
+package "Oracle Database" {
+    entity "PRODUCTS" {
+        + PRODUCT_ID : NUMBER (PK)
+        --
+        PRODUCT_NAME : VARCHAR2(255)
+        CATEGORY : VARCHAR2(100)
+        PRICE : NUMBER(10,2)
+        STOCK_QUANTITY : NUMBER(10)
+        MANUFACTURING_DATE : DATE
+        IS_AVAILABLE : CHAR(1)
+        WEIGHT_KG : NUMBER(7,3)
+        DESCRIPTION : VARCHAR2(1000)
+        LAST_UPDATED : TIMESTAMP(6)
+    }
+
+    entity "SCREEN" {
+      * ID : NUMBER <<PK>>
+      --
+      NAME : VARCHAR2(255) <<Unique>>
+    }
+
+    entity "COLUMN_CONFIG" {
+      * ID : NUMBER <<PK>>
+      --
+      COLUMN_NAME : VARCHAR2(255) <<Unique>>
+      FILTER_VALUES_JSON : CLOB
+      ADDITIONAL_DETAILS : VARCHAR2(1000)
+    }
+
+    entity "SCREEN_COLUMN" {
+      * ID : NUMBER <<PK>>
+      --
+      SCREEN_ID : NUMBER <<FK>>
+      COLUMN_ID : NUMBER <<FK>>
+      --
+      <<Unique>> (SCREEN_ID, COLUMN_ID)
+    }
+
+    package "PKG_PRODUCTS" {
+        class "t_ref_cursor" <<type>>
+
+        class "GET_PAGINATED_PRODUCTS" <<procedure>> {
+            + p_page_size : IN NUMBER
+            + p_page_number : IN NUMBER
+            + p_sort_model_json : IN CLOB
+            + p_filter_model_json : IN CLOB
+            + p_products_cursor : OUT t_ref_cursor
+            + p_total_count : OUT NUMBER
+        }
+
+        class "GET_DISTINCT_VALUES" <<procedure>> {
+            + p_column_name : IN VARCHAR2
+            + p_distinct_values : OUT t_ref_cursor
+        }
+
+        class "GET_SCREEN_COLUMN_FILTERS" <<procedure>> {
+            + p_screen_name : IN VARCHAR2
+            + p_filter_configs : OUT t_ref_cursor
+        }
+
+        class "build_where_clause()" <<function>>
+        class "build_order_by_clause()" <<function>>
+        class "quote_identifier()" <<function>>
+    }
+
+    GET_PAGINATED_PRODUCTS ..> t_ref_cursor : uses
+    GET_DISTINCT_VALUES ..> t_ref_cursor : uses
+    GET_SCREEN_COLUMN_FILTERS ..> t_ref_cursor : uses
+
+    GET_PAGINATED_PRODUCTS ..> build_where_clause : calls
+    GET_PAGINATED_PRODUCTS ..> build_order_by_clause : calls
+    build_where_clause ..> quote_identifier : calls
+    build_order_by_clause ..> quote_identifier : calls
+
+    PRODUCTS <.. GET_PAGINATED_PRODUCTS : reads
+   
+
+    SCREEN <.. GET_SCREEN_COLUMN_FILTERS : reads
+    COLUMN_CONFIG <.. GET_SCREEN_COLUMN_FILTERS : reads
+    SCREEN_COLUMN <.. GET_SCREEN_COLUMN_FILTERS : reads
+
+    SCREEN ||--o{ SCREEN_COLUMN : "has"
+    COLUMN_CONFIG ||--o{ SCREEN_COLUMN : "used in"
+    SCREEN_COLUMN }|--|| SCREEN : screen_id
+    SCREEN_COLUMN }|--|| COLUMN_CONFIG : column_id
+}
+@enduml

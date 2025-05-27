@@ -1,0 +1,30 @@
+@startuml
+skinparam handwritten true
+skinparam shadowing false
+
+rectangle "User Browser" as Browser {
+    component "Angular Application" as AngularApp
+}
+
+node "Application Server" as AppServer {
+    component "Spring Boot REST API" as SpringBoot
+    component "MyBatis (Annotations)" as MyBatis
+}
+
+database "Oracle Database" as OracleDB {
+    component "Application Tables" as AppTables
+    component "Filter Config Tables" as FilterTables
+    component "Stored Procedures" as StoredProcedures
+}
+
+Browser -- SpringBoot : HTTP/REST
+SpringBoot -- MyBatis : JDBC
+MyBatis -- OracleDB : SQL/JDBC
+OracleDB -- StoredProcedures : Calls
+AppTables -- StoredProcedures : Access
+FilterTables -- StoredProcedures : Access
+
+AngularApp --|> SpringBoot : Data & Filter Requests (with Keyset)
+SpringBoot --|> OracleDB : Data Access (with Keyset)
+
+@enduml

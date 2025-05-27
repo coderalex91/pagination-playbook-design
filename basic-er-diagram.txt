@@ -1,0 +1,48 @@
+@startuml
+skinparam handwritten true
+skinparam shadowing false
+
+entity "PRODUCTS" {
+    + PRODUCT_ID : NUMBER (PK)
+    --
+    PRODUCT_NAME : VARCHAR2(255)
+    CATEGORY : VARCHAR2(100)
+    PRICE : NUMBER(10,2)
+    STOCK_QUANTITY : NUMBER(10)
+    MANUFACTURING_DATE : DATE
+    IS_AVAILABLE : CHAR(1)
+    WEIGHT_KG : NUMBER(7,3)
+    DESCRIPTION : VARCHAR2(1000)
+    LAST_UPDATED : TIMESTAMP(6)
+}
+
+entity "SCREEN" {
+  * ID : NUMBER <<PK>>
+  --
+  NAME : VARCHAR2(255) <<Unique>>
+}
+
+entity "COLUMN_CONFIG" {
+  * ID : NUMBER <<PK>>
+  --
+  COLUMN_NAME : VARCHAR2(255) <<Unique>>
+  FILTER_VALUES_JSON : CLOB
+  ADDITIONAL_DETAILS : VARCHAR2(1000)
+}
+
+entity "SCREEN_COLUMN" {
+  * ID : NUMBER <<PK>>
+  --
+  SCREEN_ID : NUMBER <<FK>>
+  COLUMN_ID : NUMBER <<FK>>
+  --
+  <<Unique>> (SCREEN_ID, COLUMN_ID)
+}
+
+SCREEN ||--o{ SCREEN_COLUMN : "has"
+COLUMN_CONFIG ||--o{ SCREEN_COLUMN : "used in"
+
+SCREEN_COLUMN }|--|| SCREEN : screen_id
+SCREEN_COLUMN }|--|| COLUMN_CONFIG : column_id
+
+@enduml
